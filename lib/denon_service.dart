@@ -66,8 +66,11 @@ class DenonService {
             for (var pe in child.children) {
               if (pe is XmlElement && pe.name.local == 'zone2') {
                 for (var z2v in pe.children) {
-                  if (z2v is XmlElement && z2v.name.local == 'volume') {
-                      info.zone2Volume = double.parse(z2v.text);
+                  if (z2v is XmlElement && z2v.name.local == 'dispvalue') {
+                    if (z2v.text == '--')
+                      info.zone2Volume =  0;
+                    else
+                      info.zone2Volume = double.parse(z2v.text.trim());
                   }
                 }
 
@@ -123,23 +126,16 @@ class DenonService {
   }
 
   Future<double> zone2Volume(double volume) async {
+    var relativeVolume = (volume - 80).toInt();
     http.Client client = new http.Client();
     final response = await client.get(
-        'http://${Globals.api_address}:8080/goform/formiPhoneAppVolume.xml?2+-${volume.toInt()}.0',
+        'http://${Globals.api_address}:8080/goform/formiPhoneAppVolume.xml?2+$relativeVolume.0',
         headers: {
           'Accept': 'text/plain'
         });
     if (response.statusCode == 200) {
-      if (response != null && response.body.isNotEmpty) {
-        final xml = XmlDocument.parse(response.body);
-        final elements = xml.findElements('item');
-        for (var child in elements.first.children)
-        {
-          if (child is XmlElement && child.name.local == 'MasterVolume') {
-            return -double.parse(child.firstChild.text);
-          }
-        }
-      }
+      final info = await getInfo();
+      return info.zone2Volume;
     }
     return 0;
   }

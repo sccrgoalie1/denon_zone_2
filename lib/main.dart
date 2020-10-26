@@ -5,6 +5,8 @@ import 'package:denon_zone_2/debouncer.dart';
 import 'package:denon_zone_2/denon_service.dart';
 import 'package:flutter/material.dart';
 
+import 'denon_service.dart';
+
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext context) {
@@ -68,9 +70,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final DenonService service = new DenonService();
   BasicInfo info;
-  double _currentSliderValue = 0;
-  String error = '';
-  final _debouncer = Debouncer(milliseconds: 500);
+
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
@@ -100,7 +100,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 return Text('Loading');
               }
               info = snapshot.data;
-              _currentSliderValue = -info.zone2Volume;
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -114,40 +113,71 @@ class _MyHomePageState extends State<MyHomePage> {
                           } else {
                             final response2 = await service.powerOn();
                           }
+                          this.info = await service.getInfo();
                           setState(() {
-                            info.zone2On = !info.zone2On;
+
                           });
                         }),
-                    if (info.zone2On)
-                      Slider(
-                          value: _currentSliderValue,
-                          min: 0,
-                          max: 70,
-                          label: _currentSliderValue.round().toString(),
-                          onChanged: (double value) async {
-                            try {
-                              setState(() {
-                                _currentSliderValue = value;
-                              });
-                              _debouncer.run(() async {
-                                final volume = await service.zone2Volume(value);
-                                setState(() {
-                                  _currentSliderValue = volume;
-                                });
-                              });
-                            } on Exception catch (e) {
-                              setState(() {
-                                error = e.toString();
-                              });
-                            }
-                          }),
-                    Text(_currentSliderValue.toStringAsFixed(1)),
-                    if (error.isNotEmpty) Text(error)
+                    VolumeSlider(info, service),
                   ],
                 ),
               );
             }),
       ),
+    );
+  }
+}
+
+class VolumeSlider extends StatefulWidget {
+  final BasicInfo info;
+  final DenonService service;
+  VolumeSlider(this.info, this.service);
+  @override
+  _VolumeSliderState createState() => _VolumeSliderState();
+}
+
+class _VolumeSliderState extends State<VolumeSlider> {
+  final _debouncer = Debouncer(milliseconds: 500);
+  String error = '';
+  double _currentSliderValue = 0;
+  @override
+  initState() {
+    _currentSliderValue = widget.info.zone2Volume;
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (widget.info.zone2On) ...[
+          Slider(
+              value: _currentSliderValue,
+              divisions: 100,
+              min: 0,
+              max: 100,
+              label: _currentSliderValue.round().toString(),
+              onChanged: (double value) async {
+                try {
+                  setState(() {
+                    _currentSliderValue = value;
+                  });
+                  _debouncer.run(() async {
+                    final volume = await widget.service.zone2Volume(value);
+                    setState(() {
+                      _currentSliderValue = volume;
+                    });
+                  });
+                } on Exception catch (e) {
+                  setState(() {
+                    error = e.toString();
+                  });
+                }
+              }),
+          Text(_currentSliderValue.toStringAsFixed(1)),
+        ],
+        if (error.isNotEmpty) Text(error)
+      ],
     );
   }
 }
