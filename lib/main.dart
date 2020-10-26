@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:denon_zone_2/basic_info.dart';
 import 'package:denon_zone_2/debouncer.dart';
 import 'package:denon_zone_2/denon_service.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Denon Simple Zone 2 Control',
       theme: ThemeData(
         // This is the theme of your application.
@@ -65,10 +67,10 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final DenonService service = new DenonService();
-  bool poweredOn = false;
+  BasicInfo info;
   double _currentSliderValue = 0;
   String error = '';
-  final _debouncer = Debouncer(milliseconds: 1000);
+  final _debouncer = Debouncer(milliseconds: 500);
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
@@ -85,11 +87,11 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          this.poweredOn = await service.zone2PoweredOn();
+          this.info = await service.getInfo();
           setState(() {});
         },
-        child: FutureBuilder<bool>(
-            future: service.zone2PoweredOn(),
+        child: FutureBuilder<BasicInfo>(
+            future: service.getInfo(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Text(snapshot.error.toString());
@@ -97,46 +99,48 @@ class _MyHomePageState extends State<MyHomePage> {
               if (!snapshot.hasData) {
                 return Text('Loading');
               }
-              poweredOn = snapshot.data;
+              info = snapshot.data;
+              _currentSliderValue = -info.zone2Volume;
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ElevatedButton(
-                      //style: Theme.of(context).elevatedButtonTheme.style.copyWith(foregroundColor: MaterialStateProperty.resolveWith((_) => poweredOn ? Colors.red : Colors.green)),
-                        child: Text('Power ${poweredOn ? 'Off' : 'On'}'),
+                        //style: Theme.of(context).elevatedButtonTheme.style.copyWith(foregroundColor: MaterialStateProperty.resolveWith((_) => poweredOn ? Colors.red : Colors.green)),
+                        child: Text('Power ${info.zone2On ? 'Off' : 'On'}'),
                         onPressed: () async {
-                          if (poweredOn) {
+                          if (info.zone2On) {
                             final response = await service.powerOff();
                           } else {
                             final response2 = await service.powerOn();
                           }
                           setState(() {
-                            poweredOn = !poweredOn;
+                            info.zone2On = !info.zone2On;
                           });
                         }),
-                    Slider(
-                        value: _currentSliderValue,
-                        min: 0,
-                        max: 70,
-                        label: _currentSliderValue.round().toString(),
-                        onChanged: (double value) async {
-                          try {
-                            setState(() {
-                              _currentSliderValue = value;
-                            });
-                            _debouncer.run(() async {
-                              final volume = await service.zone2Volume(value);
+                    if (info.zone2On)
+                      Slider(
+                          value: _currentSliderValue,
+                          min: 0,
+                          max: 70,
+                          label: _currentSliderValue.round().toString(),
+                          onChanged: (double value) async {
+                            try {
                               setState(() {
-                                _currentSliderValue = volume;
+                                _currentSliderValue = value;
                               });
-                            });
-                          } on Exception catch (e) {
-                            setState(() {
-                              error = e.toString();
-                            });
-                          }
-                        }),
+                              _debouncer.run(() async {
+                                final volume = await service.zone2Volume(value);
+                                setState(() {
+                                  _currentSliderValue = volume;
+                                });
+                              });
+                            } on Exception catch (e) {
+                              setState(() {
+                                error = e.toString();
+                              });
+                            }
+                          }),
                     Text(_currentSliderValue.toStringAsFixed(1)),
                     if (error.isNotEmpty) Text(error)
                   ],

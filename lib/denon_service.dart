@@ -1,5 +1,6 @@
 
 
+import 'package:denon_zone_2/basic_info.dart';
 import 'package:http/http.dart' as http;
 import 'package:denon_zone_2/globals.dart';
 import 'package:xml/xml.dart';
@@ -27,7 +28,8 @@ class DenonService {
     return false;
   }
 
-  Future<String> getInfo() async {
+  Future<BasicInfo> getInfo() async {
+    BasicInfo info = new BasicInfo();
     http.Client client = new http.Client();
     final String request = '''<?xml version="1.0" encoding="utf-8" ?>
                             <tx>
@@ -37,14 +39,48 @@ class DenonService {
                             <cmd id="1">GetAllZoneSource</cmd>
                             </tx>
                             ''';
-    final response = await client.get(
+    final response = await client.post(
         'http://${Globals.api_address}:8080/goform/AppCommand.xml',
+        body: request,
         headers: {
           'Accept': 'text/xml'
         });
     if (response.statusCode == 200) {
       if (response != null && response.body.isNotEmpty) {
-        final xml = XmlDocument.parse(response.body);
+        final xml = XmlDocument.parse(response.body.replaceAll('\n',''));
+        final elements = xml.findElements('rx');
+        for (var i = 0; i < elements.first.children.length; i++) {
+          final child = elements.first.children[i];
+          if (i == 0) {
+            for (var pe in child.children) {
+              if (pe is XmlElement && pe.name.local == 'zone1') {
+                info.zone1On = pe.text == "ON";
+              }
+              if (pe is XmlElement && pe.name.local == 'zone2') {
+                info.zone2On = pe.text == "ON";
+              }
+            }
+
+          }
+          else if (i == 1) {
+            for (var pe in child.children) {
+              if (pe is XmlElement && pe.name.local == 'zone2') {
+                for (var z2v in pe.children) {
+                  if (z2v is XmlElement && z2v.name.local == 'volume') {
+                      info.zone2Volume = double.parse(z2v.text);
+                  }
+                }
+
+              }
+            }
+          }
+          else if (i == 0) {
+
+          }
+          else if (i == 0) {
+
+          }
+        }
 
 //    <?xml version="1.0" encoding="utf-8" ?>
 //    <rx>
@@ -81,7 +117,7 @@ class DenonService {
 //    </zone2>
 //    </cmd>
 //    </rx>
-        return '';
+        return info;
       }
     }
   }
