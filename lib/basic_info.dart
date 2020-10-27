@@ -1,6 +1,7 @@
 class BasicInfo {
-  bool zone1On;
-  bool zone2On;
-  double zone2Volume;
-  BasicInfo({this.zone1On});
+  bool on;
+  double volume;
+  bool muted;
+  String source;
+  BasicInfo();
 }

@@ -67,9 +67,24 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final DenonService service = new DenonService();
   BasicInfo info;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state.index) {
+      case 0: //resume
+        setState(() {});
+        break;
+      case 1: // inactive
+
+        break;
+      case 2: // paused
+
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,44 +101,41 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          this.info = await service.getInfo();
-          setState(() {});
-        },
-        child: FutureBuilder<BasicInfo>(
-            future: service.getInfo(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Text(snapshot.error.toString());
-              }
-              if (!snapshot.hasData) {
-                return Text('Loading');
-              }
-              info = snapshot.data;
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                        //style: Theme.of(context).elevatedButtonTheme.style.copyWith(foregroundColor: MaterialStateProperty.resolveWith((_) => poweredOn ? Colors.red : Colors.green)),
-                        child: Text('Power ${info.zone2On ? 'Off' : 'On'}'),
-                        onPressed: () async {
-                          if (info.zone2On) {
-                            final response = await service.powerOff();
-                          } else {
-                            final response2 = await service.powerOn();
-                          }
-                          this.info = await service.getInfo();
-                          setState(() {
-
-                          });
-                        }),
-                    VolumeSlider(info, service),
-                  ],
-                ),
-              );
-            }),
-      ),
+          onRefresh: () async {
+            setState(() {});
+          },
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                FutureBuilder<BasicInfo>(
+                    future: service.getInfo('1'),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Text(snapshot.error.toString());
+                      }
+                      if (!snapshot.hasData) {
+                        return Text('Loading');
+                      }
+                      info = snapshot.data;
+                      return VolumeSlider(info, service, '1');
+                    }),
+                Divider(),
+                FutureBuilder<BasicInfo>(
+                    future: service.getInfo('2'),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Text(snapshot.error.toString());
+                      }
+                      if (!snapshot.hasData) {
+                        return Text('Loading');
+                      }
+                      info = snapshot.data;
+                      return VolumeSlider(info, service, '2');
+                    })
+              ],
+            ),
+          )),
     );
   }
 }
@@ -131,7 +143,8 @@ class _MyHomePageState extends State<MyHomePage> {
 class VolumeSlider extends StatefulWidget {
   final BasicInfo info;
   final DenonService service;
-  VolumeSlider(this.info, this.service);
+  final String zoneNumber;
+  VolumeSlider(this.info, this.service, this.zoneNumber);
   @override
   _VolumeSliderState createState() => _VolumeSliderState();
 }
@@ -140,9 +153,11 @@ class _VolumeSliderState extends State<VolumeSlider> {
   final _debouncer = Debouncer(milliseconds: 500);
   String error = '';
   double _currentSliderValue = 0;
+  BasicInfo _info;
   @override
   initState() {
-    _currentSliderValue = widget.info.zone2Volume;
+    _currentSliderValue = widget.info.volume;
+    _info = widget.info;
     super.initState();
   }
 
@@ -150,7 +165,31 @@ class _VolumeSliderState extends State<VolumeSlider> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (widget.info.zone2On) ...[
+        Text(
+          'Zone ${widget.zoneNumber}',
+          style: Theme.of(context).textTheme.headline4,
+        ),
+        IconButton(
+            icon: Icon(
+              Icons.power_settings_new_outlined,
+              color: this._info.on ? Colors.green : Colors.red,
+            ),
+            onPressed: () async {
+              if (this._info.on) {
+                final response =
+                    await widget.service.powerOff(widget.zoneNumber);
+              } else {
+                final response2 =
+                    await widget.service.powerOn(widget.zoneNumber);
+              }
+              _debouncer.run(() async {
+                final info = await widget.service.getInfo(widget.zoneNumber);
+                setState(() {
+                  this._info = info;
+                });
+              });
+            }),
+        if (_info.on) ...[
           Slider(
               value: _currentSliderValue,
               divisions: 100,
@@ -163,7 +202,8 @@ class _VolumeSliderState extends State<VolumeSlider> {
                     _currentSliderValue = value;
                   });
                   _debouncer.run(() async {
-                    final volume = await widget.service.zone2Volume(value);
+                    final volume = await widget.service
+                        .zoneVolume(widget.zoneNumber, value);
                     setState(() {
                       _currentSliderValue = volume;
                     });
@@ -174,7 +214,18 @@ class _VolumeSliderState extends State<VolumeSlider> {
                   });
                 }
               }),
-          Text(_currentSliderValue.toStringAsFixed(1)),
+          Text(
+            'Current Volume: ${_currentSliderValue.toStringAsFixed(1)}',
+            style: Theme.of(context).textTheme.headline5,
+          ),
+          Text(
+            'Muted: ${_info.muted}',
+            style: Theme.of(context).textTheme.headline5,
+          ),
+          Text(
+            'Source: ${_info.source}',
+            style: Theme.of(context).textTheme.headline5,
+          ),
         ],
         if (error.isNotEmpty) Text(error)
       ],
