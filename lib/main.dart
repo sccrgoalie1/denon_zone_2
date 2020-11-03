@@ -1,11 +1,12 @@
 import 'dart:io';
 
 import 'package:denon_zone_2/basic_info.dart';
+import 'package:denon_zone_2/bloc/zone_info_bloc.dart';
 import 'package:denon_zone_2/debouncer.dart';
 import 'package:denon_zone_2/denon_service.dart';
+import 'package:denon_zone_2/globals.dart';
 import 'package:flutter/material.dart';
-
-import 'denon_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -22,29 +23,40 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  final DenonService service = DenonService();
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Denon Simple Zone 2 Control',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-        // This makes the visual density adapt to the platform that you run
-        // the app on. For desktop platforms, the controls will be smaller and
-        // closer together (more dense) than on mobile platforms.
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<ZoneInfoBloc>(
+          create: (context) => ZoneInfoBloc(service: service),
+        ),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Denon Simple Zone Control',
+        theme: ThemeData(
+          // This is the theme of your application.
+          //
+          // Try running your application with "flutter run". You'll see the
+          // application has a blue toolbar. Then, without quitting the app, try
+          // changing the primarySwatch below to Colors.green and then invoke
+          // "hot reload" (press "r" in the console where you ran "flutter run",
+          // or simply save your changes to "hot reload" in a Flutter IDE).
+          // Notice that the counter didn't reset back to zero; the application
+          // is not restarted.
+          primarySwatch: Colors.blue,
+          primaryColorDark: Colors.black,
+          // This makes the visual density adapt to the platform that you run
+          // the app on. For desktop platforms, the controls will be smaller and
+          // closer together (more dense) than on mobile platforms.
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        darkTheme: ThemeData.dark(),
+        home: MyHomePage(title: 'Denon Simple Zone Control'),
       ),
-      home: MyHomePage(title: 'Denon Simple Zone 2 Control'),
+
     );
   }
 }
@@ -69,8 +81,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final DenonService service = new DenonService();
-  BasicInfo info;
-
+  ZoneInfoBloc _zoneInfoBloc;
+  TextEditingController controller = TextEditingController(text: '');
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state.index) {
@@ -84,6 +96,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
         break;
     }
+  }
+
+  @override
+  void initState() {
+    _zoneInfoBloc = BlocProvider.of<ZoneInfoBloc>(context);
+    _zoneInfoBloc.add(ZoneInfoRefreshEvent());
+    super.initState();
   }
 
   @override
@@ -101,41 +120,76 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         title: Text(widget.title),
       ),
       body: RefreshIndicator(
-          onRefresh: () async {
-            setState(() {});
-          },
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                FutureBuilder<BasicInfo>(
-                    future: service.getInfo('1'),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Text(snapshot.error.toString());
-                      }
-                      if (!snapshot.hasData) {
-                        return Text('Loading');
-                      }
-                      info = snapshot.data;
-                      return VolumeSlider(info, service, '1');
-                    }),
-                Divider(),
-                FutureBuilder<BasicInfo>(
-                    future: service.getInfo('2'),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Text(snapshot.error.toString());
-                      }
-                      if (!snapshot.hasData) {
-                        return Text('Loading');
-                      }
-                      info = snapshot.data;
-                      return VolumeSlider(info, service, '2');
-                    })
-              ],
-            ),
-          )),
+        onRefresh: () async {
+          _zoneInfoBloc.add(ZoneInfoRefreshEvent());
+        },
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: BlocBuilder<ZoneInfoBloc, ZoneInfoState>(
+              cubit: BlocProvider.of<ZoneInfoBloc>(context),
+              builder: (BuildContext context, ZoneInfoState zoneState) {
+                if (zoneState is ZoneInfoStateLoading)
+                  return PageLoadProgress();
+                if (zoneState is ZoneInfoBlocStateError)
+                  return Text(zoneState.error);
+                if (zoneState is ZoneInfoBlocStateSuccess) {
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      VolumeSlider(zoneState.info.zone1Info, service, '1'),
+                      Divider(),
+                      VolumeSlider(zoneState.info.zone2Info, service, '2'),
+                    ],
+                  );
+                }
+                return Container();
+              }),
+        ),
+      ),
+      drawer: SafeArea(
+        top: true,
+        child: Drawer(
+            child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: FutureBuilder(
+              future: service.ipAddress(),
+              builder: (context, AsyncSnapshot<List<String>> snapshot) {
+                if (snapshot.connectionState != ConnectionState.done)
+                  return Container();
+                return Column(
+                  children: [
+                    TextFormField(
+                      controller: controller,
+                      decoration:
+                          InputDecoration(labelText: "Enter a new IP Address"),
+                    ),
+                    RaisedButton(
+                        child: Text('Add'),
+                        onPressed: () async {
+                          await service.saveIpAddress(controller.text);
+                          setState(() {
+                            controller.text = '';
+                          });
+                        }),
+                    Expanded(
+                      child: ListView.builder(
+                          itemCount: snapshot.data?.length ?? 0,
+                          itemBuilder: (BuildContext context, int index) {
+                            return ListTile(
+                              title: Text(snapshot.data[index]),
+                              onTap: () async {
+                                Globals.api_address = snapshot.data[index];
+                                await service
+                                    .setCurrentIpAddress(snapshot.data[index]);
+                              },
+                            );
+                          }),
+                    )
+                  ],
+                );
+              }),
+        )),
+      ),
     );
   }
 }
@@ -153,82 +207,105 @@ class _VolumeSliderState extends State<VolumeSlider> {
   final _debouncer = Debouncer(milliseconds: 500);
   String error = '';
   double _currentSliderValue = 0;
-  BasicInfo _info;
+
+  ZoneInfoBloc _zoneInfoBloc;
   @override
   initState() {
+    _zoneInfoBloc = BlocProvider.of<ZoneInfoBloc>(context);
     _currentSliderValue = widget.info.volume;
-    _info = widget.info;
+
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          'Zone ${widget.zoneNumber}',
-          style: Theme.of(context).textTheme.headline4,
-        ),
-        IconButton(
-            icon: Icon(
-              Icons.power_settings_new_outlined,
-              color: this._info.on ? Colors.green : Colors.red,
-            ),
-            onPressed: () async {
-              if (this._info.on) {
-                final response =
-                    await widget.service.powerOff(widget.zoneNumber);
-              } else {
-                final response2 =
-                    await widget.service.powerOn(widget.zoneNumber);
-              }
-              _debouncer.run(() async {
-                final info = await widget.service.getInfo(widget.zoneNumber);
-                setState(() {
-                  this._info = info;
-                });
-              });
-            }),
-        if (_info.on) ...[
-          Slider(
-              value: _currentSliderValue,
-              divisions: 100,
-              min: 0,
-              max: 100,
-              label: _currentSliderValue.round().toString(),
-              onChanged: (double value) async {
-                try {
-                  setState(() {
-                    _currentSliderValue = value;
-                  });
-                  _debouncer.run(() async {
-                    final volume = await widget.service
-                        .zoneVolume(widget.zoneNumber, value);
-                    setState(() {
-                      _currentSliderValue = volume;
-                    });
-                  });
-                } on Exception catch (e) {
-                  setState(() {
-                    error = e.toString();
-                  });
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Text(
+            'Zone ${widget.zoneNumber}',
+            style: Theme.of(context).textTheme.headline4,
+          ),
+          IconButton(
+              icon: Icon(
+                Icons.power_settings_new_outlined,
+                color: widget.info.on ? Colors.green : Colors.red,
+              ),
+              onPressed: () async {
+                if (widget.info.on) {
+                  final response =
+                      await widget.service.powerOff(widget.zoneNumber);
+                } else {
+                  final response2 =
+                      await widget.service.powerOn(widget.zoneNumber);
                 }
+                _debouncer.run(() async {
+                  _zoneInfoBloc.add(ZoneInfoRefreshEvent());
+                });
               }),
-          Text(
-            'Current Volume: ${_currentSliderValue.toStringAsFixed(1)}',
-            style: Theme.of(context).textTheme.headline5,
-          ),
-          Text(
-            'Muted: ${_info.muted}',
-            style: Theme.of(context).textTheme.headline5,
-          ),
-          Text(
-            'Source: ${_info.source}',
-            style: Theme.of(context).textTheme.headline5,
-          ),
+          if (widget.info.on) ...[
+            Slider(
+                value: _currentSliderValue,
+                divisions: 100,
+                min: 0,
+                max: 100,
+                label: _currentSliderValue.round().toString(),
+                onChanged: (double value) async {
+                  try {
+                    setState(() {
+                      _currentSliderValue = value;
+                    });
+                    _debouncer.run(() async {
+                      final volume = await widget.service
+                          .zoneVolume(widget.zoneNumber, value);
+                      setState(() {
+                        _currentSliderValue = volume;
+                      });
+                    });
+                  } on Exception catch (e) {
+                    setState(() {
+                      error = e.toString();
+                    });
+                  }
+                }),
+            Text(
+              'Current Volume: ${_currentSliderValue.toStringAsFixed(1)}',
+              style: Theme.of(context).textTheme.headline5,
+            ),
+            Text(
+              'Muted: ${widget.info.muted}',
+              style: Theme.of(context).textTheme.headline5,
+            ),
+            DropdownButton<SourceStatus>(
+              value: widget.info.sources.firstWhere(
+                  (element) => element.name == widget.info.source,
+                  orElse: () => null),
+              isDense: true,
+              onChanged: (SourceStatus t) async {
+                await widget.service.changeSource(widget.zoneNumber, t.name);
+                _zoneInfoBloc.add(ZoneInfoRefreshEvent());
+              },
+              items: widget.info.sources.map((value) {
+                return DropdownMenuItem<SourceStatus>(
+                  value: value,
+                  child: Text(value.rename),
+                );
+              }).toList(),
+            ),
+          ],
+          if (error.isNotEmpty) Text(error)
         ],
-        if (error.isNotEmpty) Text(error)
-      ],
+      ),
+    );
+  }
+}
+
+class PageLoadProgress extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: CircularProgressIndicator(),
     );
   }
 }
