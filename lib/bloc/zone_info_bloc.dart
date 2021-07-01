@@ -13,7 +13,7 @@ part 'zone_info_state.dart';
 class ZoneInfoBloc extends Bloc<ZoneInfoEvent, ZoneInfoState> {
   DenonService service;
 
-  ZoneInfoBloc({@required this.service}) : super(ZoneInfoInitial());
+  ZoneInfoBloc({required this.service}) : super(ZoneInfoInitial());
 
   @override
   Stream<ZoneInfoState> mapEventToState(ZoneInfoEvent event,) async* {

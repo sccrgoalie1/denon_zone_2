@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart' show IterableExtension;
 import 'package:denon_zone_2/basic_info.dart';
 import 'package:denon_zone_2/bloc/zone_info_bloc.dart';
 import 'package:denon_zone_2/debouncer.dart';
@@ -10,7 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
-  HttpClient createHttpClient(SecurityContext context) {
+  HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)
       ..badCertificateCallback =
           (X509Certificate cert, String host, int port) => true;
@@ -24,6 +25,7 @@ void main() {
 
 class MyApp extends StatelessWidget {
   final DenonService service = DenonService();
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -56,13 +58,12 @@ class MyApp extends StatelessWidget {
         darkTheme: ThemeData.dark(),
         home: MyHomePage(title: 'Denon Simple Zone Control'),
       ),
-
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+  MyHomePage({Key? key, this.title}) : super(key: key);
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -73,7 +74,7 @@ class MyHomePage extends StatefulWidget {
   // used by the build method of the State. Fields in a Widget subclass are
   // always marked "final".
 
-  final String title;
+  final String? title;
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -81,8 +82,10 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final DenonService service = new DenonService();
-  ZoneInfoBloc _zoneInfoBloc;
+  late ZoneInfoBloc _zoneInfoBloc;
   TextEditingController controller = TextEditingController(text: '');
+  List<String> devices = [];
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state.index) {
@@ -102,6 +105,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void initState() {
     _zoneInfoBloc = BlocProvider.of<ZoneInfoBloc>(context);
     _zoneInfoBloc.add(ZoneInfoRefreshEvent());
+
     super.initState();
   }
 
@@ -117,7 +121,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text(widget.title!),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -126,7 +130,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         child: SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
           child: BlocBuilder<ZoneInfoBloc, ZoneInfoState>(
-              cubit: BlocProvider.of<ZoneInfoBloc>(context),
+              bloc: BlocProvider.of<ZoneInfoBloc>(context),
               builder: (BuildContext context, ZoneInfoState zoneState) {
                 if (zoneState is ZoneInfoStateLoading)
                   return PageLoadProgress();
@@ -153,7 +157,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           padding: const EdgeInsets.all(8.0),
           child: FutureBuilder(
               future: service.ipAddress(),
-              builder: (context, AsyncSnapshot<List<String>> snapshot) {
+              builder: (context, AsyncSnapshot<List<String>?> snapshot) {
                 if (snapshot.connectionState != ConnectionState.done)
                   return Container();
                 return Column(
@@ -171,19 +175,49 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                             controller.text = '';
                           });
                         }),
+                    // RaisedButton(
+                    //     child: Text('Search'),
+                    //     onPressed: () async {
+                    //       var disc = upnp.DeviceDiscoverer();
+                    //       await disc.start(ipv6: false);
+                    //         final clients = await disc.discoverClients();
+                    //         for (var client in clients) {
+                    //           try {
+                    //             var dev = await client.getDevice();
+                    //             devices.add("${dev.friendlyName}: ${dev.url}");
+                    //           } catch (e, stack) {
+                    //             print("ERROR: ${e} - ${client.location}");
+                    //             print(stack);
+                    //           }
+                    //         }
+                    //
+                    //
+                    //     }),
                     Expanded(
                       child: ListView.builder(
-                          itemCount: snapshot.data?.length ?? 0,
+                          itemCount: devices.length,
                           itemBuilder: (BuildContext context, int index) {
                             return ListTile(
-                              title: Text(snapshot.data[index]),
+                              title: Text(devices[index]),
                               onTap: () async {
-                                Globals.api_address = snapshot.data[index];
+                                Globals.api_address = snapshot.data![index];
                                 await service
-                                    .setCurrentIpAddress(snapshot.data[index]);
+                                    .setCurrentIpAddress(snapshot.data![index]);
                               },
                             );
                           }),
+                      // child: ListView.builder(
+                      //     itemCount: snapshot.data?.length ?? 0,
+                      //     itemBuilder: (BuildContext context, int index) {
+                      //       return ListTile(
+                      //         title: Text(snapshot.data[index]),
+                      //         onTap: () async {
+                      //           Globals.api_address = snapshot.data[index];
+                      //           await service
+                      //               .setCurrentIpAddress(snapshot.data[index]);
+                      //         },
+                      //       );
+                      //     }),
                     )
                   ],
                 );
@@ -195,10 +229,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 }
 
 class VolumeSlider extends StatefulWidget {
-  final BasicInfo info;
+  final BasicInfo? info;
   final DenonService service;
   final String zoneNumber;
+
   VolumeSlider(this.info, this.service, this.zoneNumber);
+
   @override
   _VolumeSliderState createState() => _VolumeSliderState();
 }
@@ -208,11 +244,12 @@ class _VolumeSliderState extends State<VolumeSlider> {
   String error = '';
   double _currentSliderValue = 0;
 
-  ZoneInfoBloc _zoneInfoBloc;
+  late ZoneInfoBloc _zoneInfoBloc;
+
   @override
   initState() {
     _zoneInfoBloc = BlocProvider.of<ZoneInfoBloc>(context);
-    _currentSliderValue = widget.info.volume;
+    _currentSliderValue = widget.info!.volume ?? 0;
 
     super.initState();
   }
@@ -230,10 +267,10 @@ class _VolumeSliderState extends State<VolumeSlider> {
           IconButton(
               icon: Icon(
                 Icons.power_settings_new_outlined,
-                color: widget.info.on ? Colors.green : Colors.red,
+                color: widget.info!.on ? Colors.green : Colors.red,
               ),
               onPressed: () async {
-                if (widget.info.on) {
+                if (widget.info!.on) {
                   final response =
                       await widget.service.powerOff(widget.zoneNumber);
                 } else {
@@ -244,7 +281,30 @@ class _VolumeSliderState extends State<VolumeSlider> {
                   _zoneInfoBloc.add(ZoneInfoRefreshEvent());
                 });
               }),
-          if (widget.info.on) ...[
+          if (widget.info!.on) ...[
+            IconButton(
+                icon: Icon(
+                  Icons.remove,
+                  color: widget.info!.on ? Colors.green : Colors.red,
+                ),
+                onPressed: () async {
+                  try {
+                    setState(() {
+                      _currentSliderValue--;
+                    });
+                    _debouncer.run(() async {
+                      final volume = await widget.service
+                          .zoneVolume(widget.zoneNumber, _currentSliderValue);
+                      setState(() {
+                        _currentSliderValue = volume ?? 0;
+                      });
+                    });
+                  } on Exception catch (e) {
+                    setState(() {
+                      error = e.toString();
+                    });
+                  }
+                }),
             Slider(
                 value: _currentSliderValue,
                 divisions: 100,
@@ -260,7 +320,30 @@ class _VolumeSliderState extends State<VolumeSlider> {
                       final volume = await widget.service
                           .zoneVolume(widget.zoneNumber, value);
                       setState(() {
-                        _currentSliderValue = volume;
+                        _currentSliderValue = volume ?? 0;
+                      });
+                    });
+                  } on Exception catch (e) {
+                    setState(() {
+                      error = e.toString();
+                    });
+                  }
+                }),
+            IconButton(
+                icon: Icon(
+                  Icons.remove,
+                  color: widget.info!.on ? Colors.green : Colors.red,
+                ),
+                onPressed: () async {
+                  try {
+                    setState(() {
+                      _currentSliderValue++;
+                    });
+                    _debouncer.run(() async {
+                      final volume = await widget.service
+                          .zoneVolume(widget.zoneNumber, _currentSliderValue);
+                      setState(() {
+                        _currentSliderValue = volume ?? 0;
                       });
                     });
                   } on Exception catch (e) {
@@ -274,19 +357,18 @@ class _VolumeSliderState extends State<VolumeSlider> {
               style: Theme.of(context).textTheme.headline5,
             ),
             Text(
-              'Muted: ${widget.info.muted}',
+              'Muted: ${widget.info!.muted}',
               style: Theme.of(context).textTheme.headline5,
             ),
             DropdownButton<SourceStatus>(
-              value: widget.info.sources.firstWhere(
-                  (element) => element.name == widget.info.source,
-                  orElse: () => null),
+              value: widget.info!.sources.firstWhereOrNull(
+                  (element) => element.name == widget.info!.source),
               isDense: true,
-              onChanged: (SourceStatus t) async {
-                await widget.service.changeSource(widget.zoneNumber, t.name);
+              onChanged: (SourceStatus? t) async {
+                await widget.service.changeSource(widget.zoneNumber, t!.name);
                 _zoneInfoBloc.add(ZoneInfoRefreshEvent());
               },
-              items: widget.info.sources.map((value) {
+              items: widget.info!.sources.map((value) {
                 return DropdownMenuItem<SourceStatus>(
                   value: value,
                   child: Text(value.rename),
