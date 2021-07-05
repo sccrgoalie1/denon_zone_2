@@ -282,76 +282,80 @@ class _VolumeSliderState extends State<VolumeSlider> {
                 });
               }),
           if (widget.info!.on) ...[
-            IconButton(
-                icon: Icon(
-                  Icons.remove,
-                  color: widget.info!.on ? Colors.green : Colors.red,
-                ),
-                onPressed: () async {
-                  try {
-                    setState(() {
-                      _currentSliderValue--;
-                    });
-                    _debouncer.run(() async {
-                      final volume = await widget.service
-                          .zoneVolume(widget.zoneNumber, _currentSliderValue);
-                      setState(() {
-                        _currentSliderValue = volume ?? 0;
-                      });
-                    });
-                  } on Exception catch (e) {
-                    setState(() {
-                      error = e.toString();
-                    });
-                  }
-                }),
-            Slider(
-                value: _currentSliderValue,
-                divisions: 100,
-                min: 0,
-                max: 100,
-                label: _currentSliderValue.round().toString(),
-                onChanged: (double value) async {
-                  try {
-                    setState(() {
-                      _currentSliderValue = value;
-                    });
-                    _debouncer.run(() async {
-                      final volume = await widget.service
-                          .zoneVolume(widget.zoneNumber, value);
-                      setState(() {
-                        _currentSliderValue = volume ?? 0;
-                      });
-                    });
-                  } on Exception catch (e) {
-                    setState(() {
-                      error = e.toString();
-                    });
-                  }
-                }),
-            IconButton(
-                icon: Icon(
-                  Icons.remove,
-                  color: widget.info!.on ? Colors.green : Colors.red,
-                ),
-                onPressed: () async {
-                  try {
-                    setState(() {
-                      _currentSliderValue++;
-                    });
-                    _debouncer.run(() async {
-                      final volume = await widget.service
-                          .zoneVolume(widget.zoneNumber, _currentSliderValue);
-                      setState(() {
-                        _currentSliderValue = volume ?? 0;
-                      });
-                    });
-                  } on Exception catch (e) {
-                    setState(() {
-                      error = e.toString();
-                    });
-                  }
-                }),
+            Row(
+              children: [
+                IconButton(
+                    icon: Icon(
+                      Icons.remove,
+                      color: widget.info!.on ? Colors.green : Colors.red,
+                    ),
+                    onPressed: () async {
+                      try {
+                        setState(() {
+                          _currentSliderValue--;
+                        });
+                        _debouncer.run(() async {
+                          final volume = await widget.service
+                              .zoneVolume(widget.zoneNumber, _currentSliderValue);
+                          setState(() {
+                            _currentSliderValue = volume ?? 0;
+                          });
+                        });
+                      } on Exception catch (e) {
+                        setState(() {
+                          error = e.toString();
+                        });
+                      }
+                    }),
+                Slider(
+                    value: _currentSliderValue,
+                    divisions: 100,
+                    min: 0,
+                    max: 100,
+                    label: _currentSliderValue.round().toString(),
+                    onChanged: (double value) async {
+                      try {
+                        setState(() {
+                          _currentSliderValue = value;
+                        });
+                        _debouncer.run(() async {
+                          final volume = await widget.service
+                              .zoneVolume(widget.zoneNumber, value);
+                          setState(() {
+                            _currentSliderValue = volume ?? 0;
+                          });
+                        });
+                      } on Exception catch (e) {
+                        setState(() {
+                          error = e.toString();
+                        });
+                      }
+                    }),
+                IconButton(
+                    icon: Icon(
+                      Icons.add,
+                      color: widget.info!.on ? Colors.green : Colors.red,
+                    ),
+                    onPressed: () async {
+                      try {
+                        setState(() {
+                          _currentSliderValue++;
+                        });
+                        _debouncer.run(() async {
+                          final volume = await widget.service
+                              .zoneVolume(widget.zoneNumber, _currentSliderValue);
+                          setState(() {
+                            _currentSliderValue = volume ?? 0;
+                          });
+                        });
+                      } on Exception catch (e) {
+                        setState(() {
+                          error = e.toString();
+                        });
+                      }
+                    }),
+              ],
+            ),
             Text(
               'Current Volume: ${_currentSliderValue.toStringAsFixed(1)}',
               style: Theme.of(context).textTheme.headline5,
