@@ -369,7 +369,7 @@ class _VolumeSliderState extends State<VolumeSlider> {
                   (element) => element.name == widget.info!.source),
               isDense: true,
               onChanged: (SourceStatus? t) async {
-                await widget.service.changeSource(widget.zoneNumber, t!.name);
+                await widget.service.changeSource(widget.zoneNumber, t?.name);
                 _zoneInfoBloc.add(ZoneInfoRefreshEvent());
               },
               items: widget.info!.sources.map((value) {

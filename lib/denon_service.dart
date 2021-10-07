@@ -24,7 +24,7 @@ class DenonService {
         final elements = xml.findElements('listGlobals');
         for (var child in elements.first.children) {
           if (child is XmlElement && child.name.local == 'Zone2') {
-            return child.firstChild.text == "1";
+            return child.firstChild?.text == "1";
           }
         }
       }
@@ -32,12 +32,12 @@ class DenonService {
     return false;
   }
 
-  Future<List<String>> ipAddress() async {
+  Future<List<String>?> ipAddress() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getStringList('ipaddresses');
   }
 
-  Future<String> getCurrentIpAddress() async {
+  Future<String?> getCurrentIpAddress() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('ipaddress');
   }
@@ -51,7 +51,7 @@ class DenonService {
     final prefs = await SharedPreferences.getInstance();
     var list = prefs.getStringList('ipaddresses');
     if (list == null) {
-      list = new List<String>();
+      list =  List<String>.empty(growable: true);
     }
     list.add(ipAddress);
     await prefs.setStringList('ipaddresses', list);
@@ -117,10 +117,10 @@ class DenonService {
                 }
               }
             } else if (i == 4) {
-              info.sources = List<SourceStatus>();
-              final functionremame = child.children.firstWhere((element) =>
+              info.sources = List<SourceStatus>.empty(growable: true);
+              XmlNode functionremame = child.children.firstWhere((element) =>
               element is XmlElement && element.name.local == 'functionrename',
-                  orElse: () => null);
+                  orElse: () => null as XmlNode);
 
               for (var pe in functionremame.children) {
                 if (pe is XmlElement && pe.name.local == 'list') {
@@ -194,7 +194,7 @@ class DenonService {
     return zoneInfo;
   }
 
-  Future<double> zoneVolume(String zoneNumber, double volume) async {
+  Future<double?> zoneVolume(String zoneNumber, double volume) async {
     var relativeVolume = (volume - 80).toInt();
     http.Client client = new http.Client();
     final response = await client.get(
@@ -212,9 +212,9 @@ class DenonService {
       // }
       final info = await getInfo();
       if (zoneNumber == '2')
-        return info.zone2Info.volume;
+        return info.zone2Info?.volume;
       else
-        return info.zone1Info.volume;
+        return info.zone1Info?.volume;
     }
     return 0;
   }
@@ -252,7 +252,7 @@ class DenonService {
     return false;
   }
 
-  Future<bool> changeSource(String zoneNumber, String sourceName) async {
+  Future<bool> changeSource(String zoneNumber, String? sourceName) async {
     String zoneName = 'SI';
     if (zoneNumber == '2')
       zoneName = 'Z2';
