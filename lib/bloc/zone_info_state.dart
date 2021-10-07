@@ -22,7 +22,7 @@ class ZoneInfoBlocStateSuccess extends ZoneInfoState {
   ZoneInfoBlocStateSuccess(this.info);
 
   @override
-  String toString() => 'ZoneInfoBlocStateSuccess { info: ${info.zone1Info.on} }';
+  String toString() => 'ZoneInfoBlocStateSuccess { info: ${info.zone1Info!.on} }';
 }
 
 class ZoneInfoBlocStateError extends ZoneInfoState {

@@ -1,18 +1,18 @@
 class BasicInfo {
-  bool on;
-  double volume;
-  bool muted;
-  String source;
-  List<SourceStatus> sources;
+  late bool on;
+  double? volume;
+  bool? muted;
+  String? source;
+  late List<SourceStatus> sources;
   BasicInfo();
 }
 
 class ZoneInfo {
-  BasicInfo zone1Info;
-  BasicInfo zone2Info;
+  BasicInfo? zone1Info;
+  BasicInfo? zone2Info;
 }
 
 class SourceStatus {
-  String name;
-  String rename;
+  String? name;
+  late String rename;
 }
