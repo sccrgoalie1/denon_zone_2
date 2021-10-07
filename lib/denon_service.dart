@@ -16,7 +16,7 @@ class DenonService {
   Future<bool> zone2PoweredOn() async {
     http.Client client = new http.Client();
     final response = await client.get(
-        'https://${Globals.api_address}:10443/ajax/globals/get_config?type=4',
+        Uri.parse('https://${Globals.api_address}:10443/ajax/globals/get_config?type=4'),
         headers: {'Accept': 'text/plain'});
     if (response.statusCode == 200) {
       if (response != null && response.body.isNotEmpty) {
@@ -72,7 +72,7 @@ class DenonService {
                             </tx>
                             ''';
       final response = await client.post(
-          'http://${Globals.api_address}:8080/goform/AppCommand.xml',
+          Uri.parse('http://${Globals.api_address}:8080/goform/AppCommand.xml'),
           body: request,
           headers: {'Accept': 'text/xml'});
       if (response.statusCode == 200) {
@@ -198,7 +198,7 @@ class DenonService {
     var relativeVolume = (volume - 80).toInt();
     http.Client client = new http.Client();
     final response = await client.get(
-        'http://${Globals.api_address}:8080/goform/formiPhoneAppVolume.xml?$zoneNumber+$relativeVolume.0',
+        Uri.parse('http://${Globals.api_address}:8080/goform/formiPhoneAppVolume.xml?$zoneNumber+$relativeVolume.0'),
         headers: {'Accept': 'text/plain'});
     if (response.statusCode == 200) {
       // final xml = XmlDocument.parse(response.body.replaceAll('\n',''));
@@ -226,7 +226,7 @@ class DenonService {
       zoneText = 'Zone$zoneNumber';
     }
     final response = await client.get(
-        'https://${Globals.api_address}:10443/ajax/globals/set_config?type=4&data=<$zoneText><Power>1</Power></$zoneText>',
+        Uri.parse('https://${Globals.api_address}:10443/ajax/globals/set_config?type=4&data=<$zoneText><Power>1</Power></$zoneText>'),
         headers: {'Accept': 'text/plain'});
 
     if (response.statusCode == 200) {
@@ -242,7 +242,7 @@ class DenonService {
       zoneText = 'Zone$zoneNumber';
     }
     final response = await client.get(
-        'https://${Globals.api_address}:10443/ajax/globals/set_config?type=4&data=<$zoneText><Power>3</Power></$zoneText>',
+        Uri.parse('https://${Globals.api_address}:10443/ajax/globals/set_config?type=4&data=<$zoneText><Power>3</Power></$zoneText>'),
         headers: {
           'Accept': 'text/plain',
         });
@@ -259,7 +259,7 @@ class DenonService {
 
     http.Client client = new http.Client();
     final response = await client.get(
-        'http://${Globals.api_address}:8080/goform/formiPhoneAppDirect.xml?$zoneName$sourceName',
+        Uri.parse('http://${Globals.api_address}:8080/goform/formiPhoneAppDirect.xml?$zoneName$sourceName'),
         headers: {
           'Accept': 'text/plain',
         });

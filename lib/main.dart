@@ -126,7 +126,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         child: SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
           child: BlocBuilder<ZoneInfoBloc, ZoneInfoState>(
-              cubit: BlocProvider.of<ZoneInfoBloc>(context),
+              bloc: BlocProvider.of<ZoneInfoBloc>(context),
               builder: (BuildContext context, ZoneInfoState zoneState) {
                 if (zoneState is ZoneInfoStateLoading)
                   return PageLoadProgress();

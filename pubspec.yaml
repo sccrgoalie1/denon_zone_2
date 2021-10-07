@@ -24,12 +24,12 @@ dependencies:
   flutter:
     sdk: flutter
 
-  http: ^0.12.1
-  flutter_bloc: ^6.0.6
-  bloc: ^6.1.0
-  equatable: ^1.2.5
-  shared_preferences: 0.5.12+2
-  xml: ^4.5.1
+  http: ^0.13.4
+  flutter_bloc: ^7.3.0
+  bloc: ^7.2.1
+  equatable: ^2.0.3
+  shared_preferences: 2.0.8
+  xml: ^5.3.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.0
